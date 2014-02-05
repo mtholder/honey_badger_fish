@@ -497,6 +497,9 @@ def _add_child_list_to_xml_doc_subtree(doc, parent, child_list, key, key_order):
         ca, cd, cc, mc = _break_keys_by_hbf_type(child)
         if ('id' in ca) and ('about' not in ca):
             ca['about'] = '#' + ca['id']
+        if _MIGRATING_OLD_BF_FORM:
+            if (key == 'tree') and ('xsi:type' not in ca):
+                ca['xsi:type'] = 'nex:FloatTree'
         cel = _create_sub_el(doc, parent, key, ca, cd)
         _add_meta_xml_element(doc, cel, mc)
         _add_xml_doc_subtree(doc, cel, cc, key_order)

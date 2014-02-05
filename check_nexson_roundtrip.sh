@@ -34,10 +34,7 @@ then
     if ! validate-nexml .1.xml >/dev/null 2>&1
     then
         echo "XML written to .1.xml was not valid NeXML"
-        if test $inpwasvalid -eq 1
-        then
-            exit 1
-        fi
+        exit 1
     fi
 fi
 
@@ -59,6 +56,6 @@ fi
 
 if test "$2" = "-o"
 then
-    rm .1.xml .2.json 2>/dev/null
+    rm .1.json .1.xml .2.json 2>/dev/null
 fi
 
