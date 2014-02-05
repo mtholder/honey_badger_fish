@@ -351,7 +351,7 @@ def _gen_hbf_el(x):
             del obj['@about']
     return el_name, obj
 
-def to_honeybadgerfish_dict(src, encoding=u'utf8'):
+def to_honeybadgerfish_dict(src, encoding=u'utf-8'):
     '''Takes either:
             (1) a file_object, or
             (2) (if file_object is None) a filepath and encoding
@@ -363,7 +363,8 @@ def to_honeybadgerfish_dict(src, encoding=u'utf8'):
     '''
     if isinstance(src, str):
         src = codecs.open(src, 'rU', encoding=encoding)
-    doc = xml.dom.minidom.parse(src)
+    content = src.read().encode('utf-8')
+    doc = xml.dom.minidom.parseString(content)
     root = doc.documentElement
     key, val = _gen_hbf_el(root)
     return {key: val}
@@ -657,7 +658,7 @@ def write_obj_as_nexml(obj_dict, file_obj, addindent='', newl=''):
     # }
     doc = xml.dom.minidom.Document()
     _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=root_atts)
-    doc.writexml(file_obj, addindent=addindent, newl=newl)
+    doc.writexml(file_obj, addindent=addindent, newl=newl, encoding='utf-8')
 
 
 ################################################################################
