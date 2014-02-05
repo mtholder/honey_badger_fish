@@ -86,6 +86,8 @@ _LOG = get_logger()
 # end env-sentive logging
 ##########################################
 
+_MIGRATING_OLD_BF_FORM = True
+
 # unused cruft. Useful if we decide that some ot:... attributes should always map to arrays.
 _PLURAL_META_TO_ATT_KEYS_LIST = ('@ot:candidateTreeForSynthesis', '@ot:tag', )
 _PLURAL_META_TO_ATT_KEYS_SET = frozenset(_PLURAL_META_TO_ATT_KEYS_LIST)
@@ -367,12 +369,12 @@ def to_honeybadgerfish_dict(src, encoding=u'utf8'):
     return {key: val}
 
 def _python_instance_to_nexml_meta_datatype(v):
+    if isinstance(v, bool):
+        return 'xsd:boolean'
     if isinstance(v, int) or isinstance(v, long):
         return 'xsd:int'
     if isinstance(v, float):
         return 'xsd:float'
-    if isinstance(v, bool):
-        return 'xsd:boolean'
     return 'xsd:string'
 
 # based on http://www.w3.org/TR/xmlschema-2
@@ -409,7 +411,12 @@ def _create_sub_el(doc, parent, tag, attrib, data=None):
     if parent:
         parent.appendChild(el)
     if data:
-        el.appendChild(doc.createTextNode(unicode(data)))
+        if data is True:
+            el.appendChild(doc.createTextNode('true'))
+        elif data is False:
+            el.appendChild(doc.createTextNode('false'))
+        else:
+            el.appendChild(doc.createTextNode(unicode(data)))
     return el
 
 def _add_nested_resource_meta(doc, parent, name, value, att_dict):
@@ -537,6 +544,18 @@ def _break_keys_by_hbf_type(o):
         elif k.startswith('^'):
             s = k[1:]
             mc[s] = v
+        elif _MIGRATING_OLD_BF_FORM and k == 'meta':
+            if not isinstance(v, list):
+                v = [v]
+            for val in v:
+                k = val.get('@property')
+                if k is None:
+                    k = val.get('@rel')
+                if '@property' in val:
+                    del val['@property']
+                if '@rel' in val:
+                    del val['@rel']
+                mc[k] = val
         else:
             ck[k] = v
     return ak, tk, ck, mc
