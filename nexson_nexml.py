@@ -4,7 +4,7 @@ import logging
 import codecs
 import json
 VERSION = '0.0.3a'
-
+_CURRENT_NEXSON_VERSION = '1.0.0a'
 
 ###############################################################################
 # Code for honeybadgerfish conversion of TreeBase XML to NexSON
@@ -85,8 +85,6 @@ _LOG = get_logger()
 ##########################################
 # end env-sentive logging
 ##########################################
-
-_MIGRATING_OLD_BF_FORM = True
 
 # unused cruft. Useful if we decide that some ot:... attributes should always map to arrays.
 _PLURAL_META_TO_ATT_KEYS_LIST = ('@ot:candidateTreeForSynthesis', '@ot:tag', )
@@ -272,7 +270,7 @@ def _transform_meta_key_value(minidom_meta_element):
         return None
 
 
-def _gen_hbf_el(x):
+def _gen_hbf_el(x, nexson_syntax_version):
     '''
     Builds a dictionary from the ElementTree element x
     The function
@@ -281,6 +279,7 @@ def _gen_hbf_el(x):
     returns a pair of: the tag of `x` and the honeybadgerfish
         representation of the subelements of x
     '''
+    badgerfish_style_conversion = nexson_syntax_version.startswith('0.')
     obj = {}
     # grab the tag of x
     el_name = x.nodeName
@@ -318,7 +317,7 @@ def _gen_hbf_el(x):
     ks = set()
     for child in ntl:
         k = child.nodeName
-        if k == 'meta':
+        if k == 'meta' and (not badgerfish_style_conversion):
             matk, matv = _transform_meta_key_value(child)
             _add_value_to_dict_bf(obj, matk, matv)
         else:
@@ -336,7 +335,7 @@ def _gen_hbf_el(x):
         dcl = []
         ct = None
         for xc in v:
-            ct, dc = _gen_hbf_el(xc)
+            ct, dc = _gen_hbf_el(xc, nexson_syntax_version)
             dcl.append(dc)
         # this assertion will trip is the hacky stripping of namespaces
         #   results in a name clash among the tags of the children
@@ -351,7 +350,7 @@ def _gen_hbf_el(x):
             del obj['@about']
     return el_name, obj
 
-def to_honeybadgerfish_dict(src, encoding=u'utf-8'):
+def to_honeybadgerfish_dict(src, encoding=u'utf-8', nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     '''Takes either:
             (1) a file_object, or
             (2) (if file_object is None) a filepath and encoding
@@ -366,7 +365,8 @@ def to_honeybadgerfish_dict(src, encoding=u'utf-8'):
     content = src.read().encode('utf-8')
     doc = xml.dom.minidom.parseString(content)
     root = doc.documentElement
-    key, val = _gen_hbf_el(root)
+    key, val = _gen_hbf_el(root, nexson_syntax_version=nexson_syntax_version)
+    val['@nexml2json'] = nexson_syntax_version
     return {key: val}
 
 def _python_instance_to_nexml_meta_datatype(v):
@@ -491,21 +491,22 @@ def _add_meta_xml_element(doc, parent, meta_dict):
         else:
             _add_meta_value_to_xml_doc(doc, parent, key, value)
 
-def _add_child_list_to_xml_doc_subtree(doc, parent, child_list, key, key_order):
+def _add_child_list_to_xml_doc_subtree(doc, parent, child_list, key, key_order, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     if not isinstance(child_list, list):
         child_list = [child_list]
+    _migrating_old_bf_form = nexson_syntax_version.startswith('0.')
     for child in child_list:
-        ca, cd, cc, mc = _break_keys_by_hbf_type(child)
+        ca, cd, cc, mc = _break_keys_by_hbf_type(child, nexson_syntax_version=nexson_syntax_version)
         if ('id' in ca) and ('about' not in ca):
             ca['about'] = '#' + ca['id']
-        if _MIGRATING_OLD_BF_FORM:
+        if _migrating_old_bf_form:
             if (key == 'tree') and ('xsi:type' not in ca):
                 ca['xsi:type'] = 'nex:FloatTree'
         cel = _create_sub_el(doc, parent, key, ca, cd)
         _add_meta_xml_element(doc, cel, mc)
-        _add_xml_doc_subtree(doc, cel, cc, key_order)
+        _add_xml_doc_subtree(doc, cel, cc, key_order, nexson_syntax_version=nexson_syntax_version)
 
-def _add_xml_doc_subtree(doc, parent, children_dict, key_order=None):
+def _add_xml_doc_subtree(doc, parent, children_dict, key_order=None, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     written = set()
     if key_order:
         for t in key_order:
@@ -514,21 +515,22 @@ def _add_xml_doc_subtree(doc, parent, children_dict, key_order=None):
             if k in children_dict:
                 child_list = children_dict[k]
                 written.add(k)
-                _add_child_list_to_xml_doc_subtree(doc, parent, child_list, k, next_order_el)
+                _add_child_list_to_xml_doc_subtree(doc, parent, child_list, k, next_order_el, nexson_syntax_version=nexson_syntax_version)
     ksl = children_dict.keys()
     ksl.sort()
     for k in ksl:
         child_list = children_dict[k]
         if k not in written:
-            _add_child_list_to_xml_doc_subtree(doc, parent, child_list, k, None)
+            _add_child_list_to_xml_doc_subtree(doc, parent, child_list, k, None, nexson_syntax_version=nexson_syntax_version)
 
 
-def _break_keys_by_hbf_type(o):
+def _break_keys_by_hbf_type(o, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     '''Breaks o into a triple two dicts and text data by key type:
         attrib keys (start with '@'),
         text (value associated with the '$' or None),
         child element keys (all others)
     '''
+    _migrating_old_bf_form = nexson_syntax_version.startswith('0.')
     ak = {}
     tk = None
     ck = {}
@@ -548,7 +550,7 @@ def _break_keys_by_hbf_type(o):
         elif k.startswith('^'):
             s = k[1:]
             mc[s] = v
-        elif _MIGRATING_OLD_BF_FORM and k == 'meta':
+        elif _migrating_old_bf_form and k == 'meta':
             if not isinstance(v, list):
                 v = [v]
             for val in v:
@@ -564,7 +566,7 @@ def _break_keys_by_hbf_type(o):
             ck[k] = v
     return ak, tk, ck, mc
 
-def get_ot_study_info_from_nexml(src, encoding=u'utf8'):
+def get_ot_study_info_from_nexml(src, encoding=u'utf8', nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     '''Converts an XML doc to JSON using the honeybadgerfish convention (see to_honeybadgerfish_dict)
     and then prunes elements not used by open tree of life study curartion.
 
@@ -572,7 +574,7 @@ def get_ot_study_info_from_nexml(src, encoding=u'utf8'):
         removes nexml/characters @TODO: should replace it with a URI for 
             where the removed character data can be found.
     '''
-    o = to_honeybadgerfish_dict(src, encoding)
+    o = to_honeybadgerfish_dict(src, encoding, nexson_syntax_version=nexson_syntax_version)
     try:
         if ('nexml' in o) and ('characters' in o['nexml']):
             del o['nexml']['characters']
@@ -580,18 +582,18 @@ def get_ot_study_info_from_nexml(src, encoding=u'utf8'):
         pass
     return o
 
-def get_ot_study_info_from_treebase_nexml(src, encoding=u'utf8'):
+def get_ot_study_info_from_treebase_nexml(src, encoding=u'utf8', nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     '''Just a stub at this point. Intended to normalize treebase-specific metadata 
     into the locations where open tree of life software that expects it. 
 
     `src` can be a string (filepath) or a input file object.
     @TODO: need to investigate which metadata should move or be copied
     '''
-    o = get_ot_study_info_from_nexml(src, encoding=encoding)
+    o = get_ot_study_info_from_nexml(src, encoding=encoding,nexson_syntax_version=nexson_syntax_version)
     return o
 
 
-def _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=None):
+def _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=None, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     base_keys = obj_dict.keys()
     assert(len(base_keys) == 1)
     root_name = base_keys[0]
@@ -605,6 +607,8 @@ def _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=None):
             atts[k] = v
     if ('id' in atts) and ('about' not in atts):
         atts['about'] = '#' + atts['id']
+    if 'nexml2json' in atts:
+        del atts['nexml2json']
     r = _create_sub_el(doc, doc, root_name, atts, data)
     _add_meta_xml_element(doc, r, meta_children)
     nexml_key_order = (('meta', None),
@@ -636,10 +640,14 @@ def _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=None):
                                  )
                        )
                       )
-    _add_xml_doc_subtree(doc, r, children, nexml_key_order)
+    _add_xml_doc_subtree(doc, r, children, nexml_key_order, nexson_syntax_version=nexson_syntax_version)
 
 
-def write_obj_as_nexml(obj_dict, file_obj, addindent='', newl=''):
+def write_obj_as_nexml(obj_dict,
+                       file_obj,
+                       addindent='',
+                       newl='',
+                       nexson_syntax_version=_CURRENT_NEXSON_VERSION):
     root_atts = {
         "xmlns:nex": "http://www.nexml.org/2009",
         "xmlns": "http://www.nexml.org/2009",
@@ -657,7 +665,7 @@ def write_obj_as_nexml(obj_dict, file_obj, addindent='', newl=''):
     #     "xmlns:tb": "http://purl.org/phylo/treebase/2.0/terms#",
     # }
     doc = xml.dom.minidom.Document()
-    _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=root_atts)
+    _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=root_atts, nexson_syntax_version=nexson_syntax_version)
     doc.writexml(file_obj, addindent=addindent, newl=newl, encoding='utf-8')
 
 
