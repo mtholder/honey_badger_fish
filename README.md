@@ -14,8 +14,22 @@ is ready to be merged to master.
 
 will read NeXML or NexSON as input and produce the other format in a file called output.
 
+You can use the -m to specify the conversion mode. It expects two letter code for the 
+source and destination formats: 
+  x for NeXML,
+  j for NexSON (using the HoneyBadgerFish convention),
+  b for a direct BadgerFish translation of NeXML.
+
+So to convert from HoneyBadgerFish to BadgerFish run:
+
+    $ python nexson_nexml.py -m jb -o someoutfile.json otu.json
 
 # Roundtrip tests
+
+A test of the available format conversions (without NeXML validation) can be run with:
+
+    $ sh check_tour.sh otu.json
+
 
 If you alias your nexml validation tool to the name "validate-nexml" then you can 
 run the check_nexml_roundrip.sh and check_nexson_roundrip.sh

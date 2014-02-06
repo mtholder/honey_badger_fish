@@ -223,6 +223,7 @@ def _literal_transform_meta_key_value(minidom_meta_element):
         return None
     if full_obj:
         full_obj['$'] = trans_val
+        _cull_redundant_about(full_obj)
         return att_key, full_obj
     return att_key, trans_val
 
@@ -250,6 +251,7 @@ def _resource_transform_meta_key_value(minidom_meta_element):
     if not full_obj:
         _LOG.debug('ResourceMeta of rel="{r}" without condents ("href" attribute or nested meta)'.format(r=rel))
         return None
+    _cull_redundant_about(full_obj)
     return rel, full_obj
 
 def _transform_meta_key_value(minidom_meta_element):
@@ -270,6 +272,12 @@ def _transform_meta_key_value(minidom_meta_element):
         _LOG.debug('xsi:type attribute not LiteralMeta or ResourceMeta')
         return None
 
+def _cull_redundant_about(obj):
+    about_val = obj.get('@about')
+    if about_val:
+        id_val = obj.get('@id')
+        if id_val and (('#' + id_val) == about_val):
+            del obj['@about']
 
 def _gen_hbf_el(x, nexson_syntax_version):
     '''
@@ -344,11 +352,7 @@ def _gen_hbf_el(x, nexson_syntax_version):
         obj[ct] = dcl
 
     # delete redundant about attributes that are used in XML, but not JSON (last rule of HoneyBadgerFish)
-    about_val = obj.get('@about')
-    if about_val:
-        id_val = obj.get('@id')
-        if id_val and (('#' + id_val) == about_val):
-            del obj['@about']
+    _cull_redundant_about(obj)
     return el_name, obj
 
 def to_honeybadgerfish_dict(src, encoding=u'utf-8', nexson_syntax_version=NEXSON_VERSION):
@@ -562,7 +566,8 @@ def _break_keys_by_hbf_type(o, nexson_syntax_version=NEXSON_VERSION):
                     del val['@property']
                 if '@rel' in val:
                     del val['@rel']
-                mc[k] = val
+                _cull_redundant_about(val)
+                _add_value_to_dict_bf(mc, k, val)
         else:
             ck[k] = v
     return ak, tk, ck, mc
@@ -677,6 +682,7 @@ def write_obj_as_nexml(obj_dict,
 def _main():
     import sys, codecs, json, os
     import argparse
+    from cStringIO import StringIO
     _HELP_MESSAGE = '''NeXML/NexSON converter'''
     _EPILOG = '''UTF-8 encoding is used (for input and output).
 
@@ -743,10 +749,8 @@ Environmental variables used:
 
     if mode.endswith('b'):
         out_nexson_format = BADGER_FISH_NEXSON_VERSION
-    elif mode.endswith('j'):
-        out_nexson_format = NEXSON_VERSION
     else:
-        assert(mode.endswith('x'))
+        out_nexson_format = NEXSON_VERSION
     if mode.startswith('x'):
         blob = get_ot_study_info_from_nexml(inp,
                                             nexson_syntax_version=out_nexson_format)
@@ -778,6 +782,17 @@ Environmental variables used:
                            newl=newline,
                            nexson_syntax_version=syntax_version)
     else:
+        if not mode.startswith('x'):
+            xo = StringIO()
+            write_obj_as_nexml(blob,
+                           xo,
+                           addindent=' ',
+                           newl='\n',
+                           nexson_syntax_version=out_nexson_format)
+            xml_content = xo.getvalue()
+            xi = StringIO(xml_content)
+            blob = get_ot_study_info_from_nexml(xi,
+                    nexson_syntax_version=out_nexson_format)
         json.dump(blob, out, indent=indentation, sort_keys=True)
         out.write('\n')
 
