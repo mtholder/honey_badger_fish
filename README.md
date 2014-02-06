@@ -10,7 +10,7 @@ is ready to be merged to master.
 
 # Usage
 
-    $ python nexson_nexml.py input output
+    $ python nexson_nexml.py input -o output
 
 will read NeXML or NexSON as input and produce the other format in a file called output.
 
