@@ -4,11 +4,12 @@ import logging
 import codecs
 import json
 VERSION = '0.0.3a'
-_CURRENT_NEXSON_VERSION = '1.0.0a'
 
 ###############################################################################
 # Code for honeybadgerfish conversion of TreeBase XML to NexSON
 ###############################################################################
+NEXSON_VERSION = '1.0.0a'
+BADGER_FISH_NEXSON_VERSION = '0.0.0'
 
 ##########################################
 # env-sentive logging for easier debugging
@@ -350,7 +351,7 @@ def _gen_hbf_el(x, nexson_syntax_version):
             del obj['@about']
     return el_name, obj
 
-def to_honeybadgerfish_dict(src, encoding=u'utf-8', nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def to_honeybadgerfish_dict(src, encoding=u'utf-8', nexson_syntax_version=NEXSON_VERSION):
     '''Takes either:
             (1) a file_object, or
             (2) (if file_object is None) a filepath and encoding
@@ -491,7 +492,7 @@ def _add_meta_xml_element(doc, parent, meta_dict):
         else:
             _add_meta_value_to_xml_doc(doc, parent, key, value)
 
-def _add_child_list_to_xml_doc_subtree(doc, parent, child_list, key, key_order, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def _add_child_list_to_xml_doc_subtree(doc, parent, child_list, key, key_order, nexson_syntax_version=NEXSON_VERSION):
     if not isinstance(child_list, list):
         child_list = [child_list]
     _migrating_old_bf_form = nexson_syntax_version.startswith('0.')
@@ -506,7 +507,7 @@ def _add_child_list_to_xml_doc_subtree(doc, parent, child_list, key, key_order, 
         _add_meta_xml_element(doc, cel, mc)
         _add_xml_doc_subtree(doc, cel, cc, key_order, nexson_syntax_version=nexson_syntax_version)
 
-def _add_xml_doc_subtree(doc, parent, children_dict, key_order=None, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def _add_xml_doc_subtree(doc, parent, children_dict, key_order=None, nexson_syntax_version=NEXSON_VERSION):
     written = set()
     if key_order:
         for t in key_order:
@@ -524,7 +525,7 @@ def _add_xml_doc_subtree(doc, parent, children_dict, key_order=None, nexson_synt
             _add_child_list_to_xml_doc_subtree(doc, parent, child_list, k, None, nexson_syntax_version=nexson_syntax_version)
 
 
-def _break_keys_by_hbf_type(o, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def _break_keys_by_hbf_type(o, nexson_syntax_version=NEXSON_VERSION):
     '''Breaks o into a triple two dicts and text data by key type:
         attrib keys (start with '@'),
         text (value associated with the '$' or None),
@@ -566,7 +567,7 @@ def _break_keys_by_hbf_type(o, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
             ck[k] = v
     return ak, tk, ck, mc
 
-def get_ot_study_info_from_nexml(src, encoding=u'utf8', nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def get_ot_study_info_from_nexml(src, encoding=u'utf8', nexson_syntax_version=NEXSON_VERSION):
     '''Converts an XML doc to JSON using the honeybadgerfish convention (see to_honeybadgerfish_dict)
     and then prunes elements not used by open tree of life study curartion.
 
@@ -582,7 +583,7 @@ def get_ot_study_info_from_nexml(src, encoding=u'utf8', nexson_syntax_version=_C
         pass
     return o
 
-def get_ot_study_info_from_treebase_nexml(src, encoding=u'utf8', nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def get_ot_study_info_from_treebase_nexml(src, encoding=u'utf8', nexson_syntax_version=NEXSON_VERSION):
     '''Just a stub at this point. Intended to normalize treebase-specific metadata 
     into the locations where open tree of life software that expects it. 
 
@@ -593,7 +594,7 @@ def get_ot_study_info_from_treebase_nexml(src, encoding=u'utf8', nexson_syntax_v
     return o
 
 
-def _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=None, nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+def _nex_obj_2_nexml_doc(doc, obj_dict, root_atts=None, nexson_syntax_version=NEXSON_VERSION):
     base_keys = obj_dict.keys()
     assert(len(base_keys) == 1)
     root_name = base_keys[0]
@@ -647,7 +648,7 @@ def write_obj_as_nexml(obj_dict,
                        file_obj,
                        addindent='',
                        newl='',
-                       nexson_syntax_version=_CURRENT_NEXSON_VERSION):
+                       nexson_syntax_version=NEXSON_VERSION):
     root_atts = {
         "xmlns:nex": "http://www.nexml.org/2009",
         "xmlns": "http://www.nexml.org/2009",
@@ -673,53 +674,61 @@ def write_obj_as_nexml(obj_dict,
 # End of honeybadgerfish...
 ################################################################################
 
-if __name__ == '__main__':
+def _main():
     import sys, codecs, json, os
-    _HELP_MESSAGE = '''nexml_nexson converter. Expects an input filepath and optional ouputfilepath:
+    import argparse
+    _HELP_MESSAGE = '''NeXML/NexSON converter'''
+    _EPILOG = '''UTF-8 encoding is used (for input and output).
 
-nexml_nexson.py <input_filepath> [output_filepath]
-
-If no output_filepath is specified, standard output will be used.
-
-UTF-8 encoding is used (for input and output)
-
-Environmental variables NEXSON_INDENTATION_SETTING and NEXML_INDENTATION_SETTING set the
-    indentation level (default is 0).
-'''
-    try:
-        inpfn = sys.argv[1]
-    except:
-        sys.exit(_HELP_MESSAGE)
-    
-    if inpfn.lower() in ['-h', '-help', '--help']:
-        sys.exit(_HELP_MESSAGE)
-    
-    outfn = None
-    if len(sys.argv) > 2:
-        outfn = sys.argv[2]
-        if len(sys.argv) != 3:
-            sys.exit(_HELP_MESSAGE)
-
+Environmental variables used:
+    NEXSON_INDENTATION_SETTING indentation in NexSON (default 0)
+    NEXML_INDENTATION_SETTING indentation in NeXML (default is 0).
+    {l} logging setting: NotSet, Debug, Warn, Info, Error
+    {f} format string for logging messages.
+'''.format(l=_LOGGING_LEVEL_ENVAR, f=_LOGGING_FORMAT_ENVAR)
+    parser = argparse.ArgumentParser(description=_HELP_MESSAGE,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog=_EPILOG)
+    parser.add_argument("input", help="filepath to input")
+    parser.add_argument("-o", "--output", 
+                        metavar="FILE",
+                        required=False,
+                        help="output filepath. Standard output is used if omitted.")
+    codes = 'xjb'
+    parser.add_argument("-m", "--mode", 
+                        metavar="MODE",
+                        required=False,
+                        choices=[i + j for i in codes for j in codes],
+                        help="Two letter code for {input}{output} \
+                               The letters are x for NeXML, j for NexSON, \
+                               and b for BadgerFish JSON version of NexML. \
+                               The default behavior is to autodetect the format \
+                               and convert JSON to NeXML or NeXML to NexSON.")
+    args = parser.parse_args()
+    inpfn = args.input
+    outfn = args.output
+    mode = args.mode
     try:
         inp = codecs.open(inpfn, mode='rU', encoding='utf-8')
     except:
         sys.exit('nexson_nexml: Could not open file "{fn}"\n'.format(fn=inpfn))
-    try:
-        while True:
-            first_graph_char = inp.read(1).strip()
-            if first_graph_char == '<':
-                mode = 'xj'
-                break
-            elif first_graph_char in '{[':
-                mode = 'jx'
-                break
-            elif first_graph_char:
-                raise ValueError('Expecting input to start with <, {, or [')
-    except:
-        sys.exit('nexson_nexml: First character of "{fn}" was not <, {, or [\nInput does not appear to be NeXML or NexSON\n'.format(fn=inpfn))
-    inp.seek(0)
+    if mode is None:
+        try:
+            while True:
+                first_graph_char = inp.read(1).strip()
+                if first_graph_char == '<':
+                    mode = 'xj'
+                    break
+                elif first_graph_char in '{[':
+                    mode = '*x'
+                    break
+                elif first_graph_char:
+                    raise ValueError('Expecting input to start with <, {, or [')
+        except:
+            sys.exit('nexson_nexml: First character of "{fn}" was not <, {, or [\nInput does not appear to be NeXML or NexSON\n'.format(fn=inpfn))
+        inp.seek(0)
     
-    if mode == 'xj':
+    if mode.endswith('j'):
         indentation = int(os.environ.get('NEXSON_INDENTATION_SETTING', 0))
     else:
         indentation = int(os.environ.get('NEXML_INDENTATION_SETTING', 0))
@@ -732,16 +741,45 @@ Environmental variables NEXSON_INDENTATION_SETTING and NEXML_INDENTATION_SETTING
     else:
         out = codecs.getwriter('utf-8')(sys.stdout)
 
-    if mode == 'xj':
-        blob = get_ot_study_info_from_nexml(inp)
-        json.dump(blob, out, indent=indentation, sort_keys=True)
-        out.write('\n')
+    if mode.endswith('b'):
+        out_nexson_format = BADGER_FISH_NEXSON_VERSION
+    elif mode.endswith('j'):
+        out_nexson_format = NEXSON_VERSION
+    else:
+        assert(mode.endswith('x'))
+    if mode.startswith('x'):
+        blob = get_ot_study_info_from_nexml(inp,
+                                            nexson_syntax_version=out_nexson_format)
     else:
         blob = json.load(inp)
+        if mode.startswith('*'):
+            n = blob.get('nex:nexml')
+            if not n or (not isinstance(n, dict)):
+                sys.exit('No top level "nex:nexml" element found. Document does not appear to be a JSON version of NeXML\n')
+            if n:
+                v = n.get('@nexml2json', '0.0.0')
+                if v.startswith('0'):
+                    mode = 'b' + mode[1]
+                else:
+                    mode = 'j' + mode[1]
+
+    if mode.endswith('x'):
+        syntax_version = BADGER_FISH_NEXSON_VERSION
+        if mode.startswith('j'):
+            syntax_version = NEXSON_VERSION
         if indentation > 0:
             indent = ' '*indentation
         else:
             indent = ''
         newline = '\n'
-        write_obj_as_nexml(blob, out, addindent=indent, newl=newline)
+        write_obj_as_nexml(blob,
+                           out,
+                           addindent=indent,
+                           newl=newline,
+                           nexson_syntax_version=syntax_version)
+    else:
+        json.dump(blob, out, indent=indentation, sort_keys=True)
+        out.write('\n')
 
+if __name__ == '__main__':
+    _main()
