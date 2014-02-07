@@ -5,14 +5,14 @@ import codecs
 import json
 VERSION = '0.0.3a'
 
-###############################################################################
+#secret#hacky#cut#paste*nexsonvalidator.py#####################################
 # Code for honeybadgerfish conversion of TreeBase XML to NexSON
 ###############################################################################
 NEXSON_VERSION = '1.0.0a'
 BADGER_FISH_NEXSON_VERSION = '0.0.0'
 
 ##########################################
-# env-sentive logging for easier debugging
+# env-sensitive logging for easier debugging
 ##########################################
 import os
 _LOGGING_LEVEL_ENVAR = "NEXSON_LOGGING_LEVEL"
@@ -84,7 +84,7 @@ def get_logger(name="nexson"):
     return logger
 _LOG = get_logger()
 ##########################################
-# end env-sentive logging
+# end env-sensitive logging
 ##########################################
 
 # unused cruft. Useful if we decide that some ot:... attributes should always map to arrays.
@@ -677,7 +677,9 @@ def write_obj_as_nexml(obj_dict,
 
 ################################################################################
 # End of honeybadgerfish...
-################################################################################
+#end#secret#hacky#cut#paste*nexsonvalidator.py##################################
+
+#secret#hacky#cut#paste*nexson_nexml.py##################################
 
 def _main():
     import sys, codecs, json, os
