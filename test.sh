@@ -1,11 +1,15 @@
 #!/bin/sh
-r=2
+r=3
 p=0
 if ./check_nexml_roundtrip.sh otu.xml -o
 then
     p=$(expr 1 + $p)
 fi
 if ./check_nexson_roundtrip.sh otu.json -o
+then
+    p=$(expr 1 + $p)
+fi
+if ./check_tour.sh otu.json
 then
     p=$(expr 1 + $p)
 fi
