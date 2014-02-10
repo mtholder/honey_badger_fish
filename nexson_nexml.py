@@ -5,12 +5,6 @@ import codecs
 import json
 VERSION = '0.0.3a'
 
-#secret#hacky#cut#paste*nexsonvalidator.py#####################################
-# Code for honeybadgerfish conversion of TreeBase XML to NexSON
-###############################################################################
-NEXSON_VERSION = '1.0.0a'
-BADGER_FISH_NEXSON_VERSION = '0.0.0'
-
 ##########################################
 # env-sensitive logging for easier debugging
 ##########################################
@@ -86,6 +80,12 @@ _LOG = get_logger()
 ##########################################
 # end env-sensitive logging
 ##########################################
+
+#secret#hacky#cut#paste*nexsonvalidator.py#####################################
+# Code for honeybadgerfish conversion of TreeBase XML to NexSON
+###############################################################################
+NEXSON_VERSION = '1.0.0a'
+BADGER_FISH_NEXSON_VERSION = '0.0.0'
 
 # unused cruft. Useful if we decide that some ot:... attributes should always map to arrays.
 _PLURAL_META_TO_ATT_KEYS_LIST = ('@ot:candidateTreeForSynthesis', '@ot:tag', )
